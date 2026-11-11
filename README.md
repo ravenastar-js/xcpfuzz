@@ -76,7 +76,7 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
   Recursos Principais
 </h2>
 
-- <img src="https://api.iconify.design/mdi/format-list-numbered.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Máscara com wildcard** - Use `X` em qualquer posição (`XXX.680.938-XX` gera 100 CPFs válidos)
+- <img src="https://api.iconify.design/mdi/format-list-numbered.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Máscara com wildcard** - Use `X` em qualquer posição (`XXX.680.938-XX` gera 100¹·⁵ CPFs válidos)
 - <img src="https://api.iconify.design/mdi/check-decagram.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Dígitos verificadores automáticos** - Os dois últimos dígitos são calculados pelo algoritmo oficial do CPF
 - <img src="https://api.iconify.design/mdi/shield-lock.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Token automático** - Extrai o token `?t=` do Portal via Playwright e cacheia em `token.txt`
 - <img src="https://api.iconify.design/mdi/incognito.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Stealth JS** - Sobrescreve `navigator.webdriver`, plugins, languages e platform para evitar detecção
