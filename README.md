@@ -189,13 +189,13 @@ Sem argumentos, o script mostra o **guia completo com banner, link do repositór
 Roda direto da URL espelhada em Cloudflare Pages, **usando `Invoke-WebRequest` do PowerShell**:
 
 ```powershell
-(Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python - "XXX.680.938-XX"
+$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); (Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python -X utf8 - "XXX.680.938-XX"
 ```
 
 Com filtro de nome:
 
 ```powershell
-(Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python - "XXX.680.938-XX" --nome "Silva"
+$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); (Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python -X utf8 - "XXX.680.938-XX" --nome "Silva"
 ```
 
 > <img src="https://api.iconify.design/mdi/information.svg?color=%236effa8" width="18" height="18" style="vertical-align: middle;" /> O `-UseBasicParsing` evita dependência do Internet Explorer no Windows PowerShell 5.1. No PowerShell 7+ ele é opcional (mas inofensivo). Em Linux/macOS, use `curl -s https://ravenastar.com/cmd/xcpfuzz.py | python3 - "XXX.680.938-XX"`.
@@ -244,7 +244,7 @@ Fim     : 11/11/2026 14:33:12
 | `API direta: indisponível` | Token expirou ou rate limit | Apague `token.txt` para gerar novo token |
 | Progresso para em 0% | Requisições bloqueadas | Tente `--workers 3` e aguarde alguns minutos |
 | `Máscara inválida` | Faltou dígito ou caractere estranho | Use formato `XXX.680.938-XX` (11 posições) |
-| Mojibake (`Ã¡`, `â€"`) no terminal | Console em CP1252 | Rode `chcp 65001` antes ou use Windows Terminal |
+| Mojibake (`Ã¡`, `â€"`) no terminal | Console em CP1252 ou pipe sem UTF-8 | Rode `chcp 65001` antes, use Windows Terminal ou aplique `$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new()` antes do comando |
 | `... não pode ser carregado porque a execução de scripts foi desabilitada` | ExecutionPolicy restritiva no PowerShell | Rode `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force` |
 | `.\.venv\Scripts\Activate.ps1 : não reconhecido` | Venv não criado ou PowerShell em modo restrito | Verifique se `python -m venv .venv` rodou e reabra o terminal |
 | `python: command not found` | Python não instalado ou fora do PATH | Reinstale via `winget install -e --id Python.Python.3.12` e reabra o terminal |

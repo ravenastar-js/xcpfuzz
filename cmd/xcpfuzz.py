@@ -207,7 +207,8 @@ def _print_guide() -> None:
     print()
 
     print(f"  {C_CYAN}{C_BOLD}» EXECUÇÃO VIA PIPE{C_RESET}  {C_DIM}(sem clonar o repo){C_RESET}")
-    print(f"    {C_GREEN}(Invoke-WebRequest -Uri \"{MIRROR_URL}\" -UseBasicParsing).Content | python - \"XXX.680.938-XX\"{C_RESET}")
+    print(f"    {C_GREEN}$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new(){C_RESET}")
+    print(f"    {C_GREEN}(Invoke-WebRequest -Uri \"{MIRROR_URL}\" -UseBasicParsing).Content | python -X utf8 - \"XXX.680.938-XX\"{C_RESET}")
     print()
 
     print(sep)
