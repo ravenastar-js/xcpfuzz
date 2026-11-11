@@ -136,7 +136,7 @@ Ou use o espelho: [https://ravenastar.com/cmd/xcpfuzz.py](https://ravenastar.com
 
 Requer **Python 3.12+**. No **PowerShell** (Windows):
 
-\`\`\`powershell
+```powershell
 winget install -e --id Python.Python.3.12
 
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
@@ -146,7 +146,7 @@ python -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install aiohttp playwright
 playwright install chromium
-\`\`\`
+```
 
 > O `playwright install chromium` baixa o navegador headless usado para extrair o token e, se necessário, operar em modo fallback contra o reCAPTCHA.
 >
@@ -159,9 +159,9 @@ playwright install chromium
   Guia Rápido
 </h3>
 
-\`\`\`powershell
+```powershell
 python xcpfuzz.py
-\`\`\`
+```
 
 Sem argumentos, o script mostra o **guia completo com banner, link do repositório, instruções de instalação e exemplos de uso**. Depois é só rodar com uma máscara.
 
@@ -188,15 +188,15 @@ Sem argumentos, o script mostra o **guia completo com banner, link do repositór
 
 Roda direto da URL espelhada em Cloudflare Pages, **usando `Invoke-WebRequest` do PowerShell**:
 
-\`\`\`powershell
+```powershell
 (Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python - "XXX.680.938-XX"
-\`\`\`
+```
 
 Com filtro de nome:
 
-\`\`\`powershell
+```powershell
 (Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python - "XXX.680.938-XX" --nome "Silva"
-\`\`\`
+```
 
 > <img src="https://api.iconify.design/mdi/information.svg?color=%236effa8" width="18" height="18" style="vertical-align: middle;" /> O `-UseBasicParsing` evita dependência do Internet Explorer no Windows PowerShell 5.1. No PowerShell 7+ ele é opcional (mas inofensivo). Em Linux/macOS, use `curl -s https://ravenastar.com/cmd/xcpfuzz.py | python3 - "XXX.680.938-XX"`.
 
@@ -216,7 +216,7 @@ Para cada execução é gerado um arquivo `.txt` no diretório atual:
 
 Formato:
 
-\`\`\`text
+```text
 xCPFuzz - busca por máscara
 Máscara : XXX.680.938-XX
 Nome    : Silva
@@ -229,7 +229,7 @@ Início  : 11/11/2026 14:32:07
 ============================================================
 Total encontrado: 2/100
 Fim     : 11/11/2026 14:33:12
-\`\`\`
+```
 
 ---
 
