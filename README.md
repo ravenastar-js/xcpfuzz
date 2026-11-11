@@ -14,7 +14,7 @@
 [![Playwright](https://img.shields.io/badge/Playwright-000000?style=for-the-badge&logo=playwright&logoColor=6effa8&labelColor=0c1a13)](#)
 [![License](https://img.shields.io/badge/License-MIT-000000?style=for-the-badge&logo=opensourceinitiative&logoColor=6effa8&labelColor=0c1a13)](#)
 
-[![Download xcpfuzz.py](https://img.shields.io/badge/Download-xcpfuzz.py-6effa8?style=for-the-badge&logo=python&logoColor=0c1a13&labelColor=0c1a13)](cmd/xcpfuzz.py)
+[![Download xcpfuzz.py](https://img.shields.io/badge/Download-xcpfuzz.py-6effa8?style=for-the-badge&logo=python&logoColor=6effa8&labelColor=0c1a13)](cmd/xcpfuzz.py)
 
 *💚 Gera CPFs válidos por máscara e verifica vínculos no Portal da Transparência*
 
@@ -110,7 +110,7 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
 
 O script fica em [`cmd/xcpfuzz.py`](https://github.com/ravenastar-js/xcpfuzz/blob/main/cmd/xcpfuzz.py) no repositório. Baixe direto:
 
-[![Download xcpfuzz.py](https://img.shields.io/badge/Download-xcpfuzz.py-6effa8?style=for-the-badge&logo=python&logoColor=0c1a13&labelColor=0c1a13)](https://ravenastar.com/cmd/xcpfuzz.py)
+[![Download xcpfuzz.py](https://img.shields.io/badge/Download-xcpfuzz.py-6effa8?style=for-the-badge&logo=python&logoColor=6effa8&labelColor=0c1a13)](cmd/xcpfuzz.py)
 
 Ou use o espelho: [https://ravenastar.com/cmd/xcpfuzz.py](https://ravenastar.com/cmd/xcpfuzz.py)
 
