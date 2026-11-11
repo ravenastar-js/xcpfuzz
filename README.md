@@ -282,9 +282,4 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
   por <a href="https://linktr.ee/ravenastar">RavenaStar</a>
 </h2>
 
-<a href="#">
-  <img src="https://api.iconify.design/mdi/arrow-up-bold.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> 
-  Voltar ao topo
-</a>
-
 </div>
