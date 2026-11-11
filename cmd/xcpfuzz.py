@@ -18,6 +18,7 @@ SEARCH_URL   = "https://busca.portaldatransparencia.gov.br/busca/pessoa-fisica"
 TOKEN_FILE   = Path(__file__).resolve().parent / "token.txt"
 REPO_URL     = "https://github.com/ravenastar-js/xcpfuzz"
 MIRROR_URL   = "https://ravenastar.com/cmd/xcpfuzz.py"
+API_ATTEMPTS = 3
 
 _API_HEADERS = {
     "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -408,6 +409,13 @@ def _save_token(token: str) -> None:
     TOKEN_FILE.write_text(token, encoding="utf-8")
 
 
+def _invalidate_token() -> None:
+    try:
+        TOKEN_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 async def _ensure_token() -> str:
     cached = _load_token()
     if cached:
@@ -469,9 +477,33 @@ async def _probe_with_spinner(session: aiohttp.ClientSession, token: str) -> boo
         stop.set()
         await spinner
 
-    status = f"{C_GREEN}{C_BOLD}disponível ✓{C_RESET}" if result else f"{C_YELLOW}indisponível — usando Playwright{C_RESET}"
+    status = f"{C_GREEN}{C_BOLD}disponível ✓{C_RESET}" if result else f"{C_YELLOW}indisponível{C_RESET}"
     print(f"  {C_DIM}API direta:{C_RESET} {status}")
     return result
+
+
+async def _acquire_api_session(args, attempts: int = API_ATTEMPTS) -> tuple[bool, str]:
+    if args.force_playwright:
+        print(f"  {C_DIM}Token     :{C_RESET} {C_YELLOW}ignorado (--force-playwright){C_RESET}")
+        print(f"  {C_DIM}API direta:{C_RESET} {C_YELLOW}ignorada (--force-playwright){C_RESET}")
+        return False, ""
+
+    token = ""
+    for i in range(1, attempts + 1):
+        token = await _ensure_token()
+        conn = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(headers=_API_HEADERS, connector=conn) as session:
+            if await _probe_with_spinner(session, token):
+                return True, token
+
+        if i < attempts:
+            delay = 2 * i
+            print(f"  {C_YELLOW}» Reciclando token e tentando novamente ({i}/{attempts - 1}) em {delay}s...{C_RESET}")
+            _invalidate_token()
+            await asyncio.sleep(delay)
+
+    print(f"  {C_RED}×{C_RESET} {C_DIM}API direta falhou após {attempts} tentativas — caindo para Playwright{C_RESET}")
+    return False, ""
 
 
 async def _ticker(progress: Progress, stop: asyncio.Event) -> None:
@@ -681,16 +713,7 @@ async def run_playwright(
 async def _run_async(args, candidates: list[str], writer: ResultWriter) -> None:
     total = len(candidates)
 
-    if args.force_playwright:
-        token = ""
-        use_api = False
-        print(f"  {C_DIM}Token     :{C_RESET} {C_YELLOW}ignorado (--force-playwright){C_RESET}")
-        print(f"  {C_DIM}API direta:{C_RESET} {C_YELLOW}ignorada (--force-playwright){C_RESET}")
-    else:
-        token = await _ensure_token()
-        conn = aiohttp.TCPConnector(ssl=False)
-        async with aiohttp.ClientSession(headers=_API_HEADERS, connector=conn) as session:
-            use_api = await _probe_with_spinner(session, token)
+    use_api, token = await _acquire_api_session(args)
 
     workers = args.workers if use_api else min(args.workers, 5)
     mode = "API direta" if use_api else "Playwright (reCAPTCHA)"
