@@ -99,7 +99,6 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
 [![Playwright](https://img.shields.io/badge/Playwright-000000?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzZlZmZhOCIgZD0iTTEyIDJDMi4yIDIgMiAyLjIgMiAxMnMyLjIgMTAgMTAgMTAgMTAtMi4yIDEwLTEwUzIxLjggMiAxMiAyem0wIDE4Yy00LjQgMC04LTMuNi04LThzMy42LTggOC04IDggMy42IDggOC0zLjYgOC04IDh6Ii8+PC9zdmc+&logoColor=6effa8&labelColor=0c1a13)](https://playwright.dev/python/)
 [![asyncio](https://img.shields.io/badge/asyncio-000000?style=flat-square&logo=python&logoColor=6effa8&labelColor=0c1a13)](https://docs.python.org/3/library/asyncio.html)
 [![Windows PowerShell](https://img.shields.io/badge/Windows_PowerShell-000000?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzZlZmZhOCIgZD0iTTMsNS41VjExSDEwLjVWM0gzVjUuNU0zLDE4LjVWMTNIMTAuNVYyMUgzVjE4LjVNMTEuNSwyMUgyMVYxM0gxMS41VjIxTTExLjUsM1YxMUgyMVYzSDExLjVaIi8+PC9zdmc+&logoColor=6effa8&labelColor=0c1a13)](https://learn.microsoft.com/pt-br/powershell/scripting/install/install-powershell)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare_Pages-000000?style=flat-square&logo=cloudflare&logoColor=6effa8&labelColor=0c1a13)](https://pages.cloudflare.com/)
 [![Git](https://img.shields.io/badge/Git-000000?style=flat-square&logo=git&logoColor=6effa8&labelColor=0c1a13)](https://git-scm.com/)
 
 </div>
@@ -186,7 +185,7 @@ Sem argumentos, o script mostra o **guia completo com banner, link do repositór
   Execução via pipe (sem clonar)
 </h3>
 
-Roda direto da URL espelhada em Cloudflare Pages, **usando `Invoke-WebRequest` do PowerShell**:
+Roda direto da URL espelhada em **usando `Invoke-WebRequest` do PowerShell**:
 
 ```powershell
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); (Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python -X utf8 - "XXX.680.938-XX"
