@@ -263,6 +263,23 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
 
 ---
 
+<h3>
+  <img src="https://api.iconify.design/mdi/scale-balance.svg?color=%236effa8" width="22" height="22" style="vertical-align: middle;" />
+  Base legal e normas de referência
+</h3>
+
+- **Constituição Federal, art. 5º, XXXIII** – direito de acesso a informações de interesse público.
+- **Constituição Federal, art. 5º, X** – inviolabilidade da intimidade, da vida privada, da honra e da imagem.
+- **Lei nº 12.527/2011 (Lei de Acesso à Informação)** e **Lei Complementar nº 131/2009 (Lei da Transparência)** – fundamento da divulgação de dados no Portal da Transparência.
+- **Lei nº 13.709/2018 (LGPD), art. 7º, §3º** – o tratamento de dados pessoais de acesso público deve considerar a finalidade, a boa-fé e o interesse público que justificaram sua disponibilização.
+- **LGPD, art. 6º** – princípios da finalidade, adequação e necessidade.
+- **LGPD, art. 7º, §7º** – o uso posterior desses dados exige propósito legítimo e específico.
+- **Lei nº 13.432/2017, arts. 2º e 10** – quando usado por profissional de investigação particular, restringe-se à coleta de dados de natureza não criminal, sendo vedado participar diretamente de diligências policiais.
+
+> Ferramenta de produção de inteligência e suporte técnico, sem usurpação de função pública. O uso deve respeitar a finalidade legítima, a LGPD e a legislação pertinente. A responsabilidade pelo uso é de quem o executa.
+
+---
+
 ## <img src="https://api.iconify.design/mdi/star.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" />  Star History
 
 <a href="https://www.star-history.com/?repos=ravenastar-js%2Fxcpfuzz&type=date&legend=top-left">
