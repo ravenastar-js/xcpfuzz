@@ -55,7 +55,7 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
 
 > [!NOTE]
 > **Este projeto começou como um experimento.** <img src="https://api.iconify.design/mdi/flask.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" />
-> O xCPFuzz foi feito para automatizar uma verificação chata de fazer manualmente. O escopo é simples e não há planos de expandir para algo massivo.
+> O xCPFuzz foi desenvolvido para automatizar uma verificação tediosa e repetitiva, que seria cansativa de executar manualmente. O escopo é simples e não há planos de expandir para algo massivo.
 
 <h3>
   <img src="https://api.iconify.design/mdi/creation.svg?color=%236effa8" width="22" height="22" style="vertical-align: middle;" />
