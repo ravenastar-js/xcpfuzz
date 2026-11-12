@@ -24,7 +24,7 @@
 ---
 
 <div align="center">
-  <img src="img/bg.png" alt="XNAJA Banner" width="100%" />
+  <img src="img/bg.png" alt="xCPFuzz Banner" width="100%"/>
 </div>
 
 <br>
