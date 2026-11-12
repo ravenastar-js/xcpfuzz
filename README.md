@@ -187,7 +187,7 @@ Sem argumentos, o script mostra o **guia completo com banner, link do repositór
   Execução via pipe (sem clonar)
 </h3>
 
-Roda direto da URL espelhada em **usando `Invoke-WebRequest` do PowerShell**:
+Roda direto da URL espelhada **usando `Invoke-WebRequest` do PowerShell**:
 
 ```powershell
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); (Invoke-WebRequest -Uri "https://ravenastar.com/cmd/xcpfuzz.py" -UseBasicParsing).Content | python -X utf8 - "XXX.680.938-XX"
