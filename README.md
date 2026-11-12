@@ -122,7 +122,9 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
   Download
 </h3>
 
-O script fica em [`cmd/xcpfuzz.py`](https://github.com/ravenastar-js/xcpfuzz/blob/main/cmd/xcpfuzz.py) no repositório. Baixe direto:
+O script fica em [`cmd/xcpfuzz.py`](https://github.com/ravenastar-js/xcpfuzz/blob/main/cmd/xcpfuzz.py) nesse repositório. 
+
+Baixe direto:
 
 [![Download xcpfuzz.py](https://img.shields.io/badge/Download-xcpfuzz.py-6effa8?style=for-the-badge&logo=python&logoColor=6effa8&labelColor=0c1a13)](cmd/xcpfuzz.py)
 
