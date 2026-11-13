@@ -19,6 +19,7 @@ TOKEN_FILE   = Path(__file__).resolve().parent / "token.txt"
 REPO_URL     = "https://github.com/ravenastar-js/xcpfuzz"
 MIRROR_URL   = "https://ravenastar.com/cmd/xcpfuzz.py"
 API_ATTEMPTS = 3
+API_MIN_INTERVAL = 0.15
 
 _API_HEADERS = {
     "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -153,6 +154,21 @@ def _parse_json(data: dict) -> tuple[bool, str]:
         raw = records[0].get("nome", "")
         name = raw.title() if raw else ""
     return (total > 0 or bool(records), name)
+
+
+class RateLimiter:
+    def __init__(self, min_interval: float) -> None:
+        self.min_interval = min_interval
+        self._last = 0.0
+        self._lock = asyncio.Lock()
+
+    async def wait(self) -> None:
+        async with self._lock:
+            now = time.monotonic()
+            delta = now - self._last
+            if delta < self.min_interval:
+                await asyncio.sleep(self.min_interval - delta)
+            self._last = time.monotonic()
 
 
 def _print_banner() -> None:
@@ -520,6 +536,7 @@ async def _ticker(progress: Progress, stop: asyncio.Event) -> None:
 async def _query_api(
     session: aiohttp.ClientSession,
     sem: asyncio.Semaphore,
+    limiter: RateLimiter,
     cpf: str,
     writer: ResultWriter,
     progress: Progress,
@@ -527,6 +544,7 @@ async def _query_api(
     token: str,
 ) -> None:
     async with sem:
+        await limiter.wait()
         formatted = fmt(cpf)
         found, name = False, ""
         try:
@@ -570,13 +588,14 @@ async def run_api(
 ) -> None:
     conn = aiohttp.TCPConnector(limit=workers * 2, ssl=False)
     sem = asyncio.Semaphore(workers)
+    limiter = RateLimiter(API_MIN_INTERVAL)
     stop_ticker = asyncio.Event()
     ticker = asyncio.create_task(_ticker(progress, stop_ticker))
 
     try:
         async with aiohttp.ClientSession(headers=_API_HEADERS, connector=conn) as session:
             tasks = [
-                _query_api(session, sem, cpf, writer, progress, name_filter, token)
+                _query_api(session, sem, limiter, cpf, writer, progress, name_filter, token)
                 for cpf in candidates
             ]
             await asyncio.gather(*tasks, return_exceptions=True)
