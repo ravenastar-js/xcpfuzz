@@ -2,35 +2,46 @@ import re
 import sys
 import json
 import time
+import random
 import itertools
 import argparse
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlparse, parse_qs
 
-import aiohttp
+from curl_cffi.requests import AsyncSession
+from curl_cffi.requests.exceptions import RequestException
 from playwright.async_api import async_playwright, Page, Browser
 
+PORTAL_BASE = "https://portaldatransparencia.gov.br"
+SEARCH_URL = "https://busca.portaldatransparencia.gov.br/busca/pessoa-fisica"
+REPO_URL = "https://github.com/ravenastar-js/xcpfuzz"
+MIRROR_URL = "https://ravenastar.com/cmd/xcpfuzz.py"
 
-PORTAL_BASE  = "https://portaldatransparencia.gov.br"
-SEARCH_URL   = "https://busca.portaldatransparencia.gov.br/busca/pessoa-fisica"
-TOKEN_FILE   = Path(__file__).resolve().parent / "token.txt"
-REPO_URL     = "https://github.com/ravenastar-js/xcpfuzz"
-MIRROR_URL   = "https://ravenastar.com/cmd/xcpfuzz.py"
 API_ATTEMPTS = 3
-API_MIN_INTERVAL = 0.15
+DEFAULT_RPS = 6.6
+MAX_BACKOFF_INTERVAL = 3.0
+
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
 
 _API_HEADERS = {
-    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept": "application/json, text/plain, */*",
     "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
     "Referer": f"{PORTAL_BASE}/pessoa-fisica/busca/lista",
     "Origin": PORTAL_BASE,
-    "X-Requested-With": "XMLHttpRequest",
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": _BROWSER_UA,
+    "Sec-CH-UA": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "Sec-CH-UA-Mobile": "?0",
+    "Sec-CH-UA-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-site",
+    "Sec-Fetch-User": "?1",
 }
 
 _BLOCK_TYPES = {"image", "media", "font"}
@@ -47,7 +58,6 @@ Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
 window.chrome = {runtime: {}, app: {isInstalled: false}};
 """
 
-
 def _enable_ansi():
     if sys.platform == "win32":
         try:
@@ -60,7 +70,6 @@ def _enable_ansi():
             sys.stdout.reconfigure(encoding="utf-8")
         except Exception:
             pass
-
 
 _enable_ansi()
 
@@ -88,7 +97,6 @@ BANNER = r"""
 
 _debug_saved = asyncio.Event()
 
-
 def _fmt_time(sec: float) -> str:
     sec = int(sec)
     if sec < 60:
@@ -99,12 +107,10 @@ def _fmt_time(sec: float) -> str:
     h, m = divmod(m, 60)
     return f"{h}h{m:02d}m"
 
-
 def _calc_digit(partial: str, weight: int) -> int:
     soma = sum(int(d) * w for d, w in zip(partial, range(weight, 1, -1)))
     resto = (soma * 10) % 11
     return 0 if resto >= 10 else resto
-
 
 def _build_cpf(base9: str) -> str | None:
     if len(set(base9)) == 1:
@@ -113,10 +119,8 @@ def _build_cpf(base9: str) -> str | None:
     d2 = _calc_digit(base9 + str(d1), 11)
     return base9 + str(d1) + str(d2)
 
-
 def fmt(cpf: str) -> str:
     return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-
 
 def generate_candidates(mask: str) -> list[str]:
     clean = re.sub(r"[^0-9Xx]", "", mask).upper()
@@ -139,12 +143,10 @@ def generate_candidates(mask: str) -> list[str]:
             out.append(cpf)
     return out
 
-
 def _matches_name(name: str, filter_name: str) -> bool:
     if not filter_name:
         return True
     return filter_name.lower() in (name or "").lower()
-
 
 def _parse_json(data: dict) -> tuple[bool, str]:
     total = data.get("totalRegistros", 0)
@@ -155,21 +157,29 @@ def _parse_json(data: dict) -> tuple[bool, str]:
         name = raw.title() if raw else ""
     return (total > 0 or bool(records), name)
 
-
-class RateLimiter:
-    def __init__(self, min_interval: float) -> None:
-        self.min_interval = min_interval
+class AdaptiveRateLimiter:
+    def __init__(self, base_rps: float = DEFAULT_RPS, max_interval: float = MAX_BACKOFF_INTERVAL) -> None:
+        self.base_rps = base_rps
+        self.base_interval = 1.0 / base_rps
+        self.min_interval = self.base_interval
+        self.max_interval = max_interval
         self._last = 0.0
         self._lock = asyncio.Lock()
+
+    def penalize(self) -> None:
+        self.min_interval = min(self.min_interval * 1.5, self.max_interval)
+
+    def reward(self) -> None:
+        self.min_interval = max(self.min_interval * 0.97, self.base_interval)
 
     async def wait(self) -> None:
         async with self._lock:
             now = time.monotonic()
-            delta = now - self._last
-            if delta < self.min_interval:
-                await asyncio.sleep(self.min_interval - delta)
+            jitter = random.uniform(0, self.min_interval * 0.25)
+            delay = self.min_interval + jitter - (now - self._last)
+            if delay > 0:
+                await asyncio.sleep(delay)
             self._last = time.monotonic()
-
 
 def _print_banner() -> None:
     if not ANSI:
@@ -177,7 +187,6 @@ def _print_banner() -> None:
         return
     for line in BANNER.strip("\n").split("\n"):
         print(f"  {C_JADE}{line}{C_RESET}")
-
 
 def _print_guide() -> None:
     sep = f"  {C_DIM}{'─' * 56}{C_RESET}"
@@ -206,7 +215,7 @@ def _print_guide() -> None:
         '.\\.venv\\Scripts\\Activate.ps1',
         '',
         'python -m pip install --upgrade pip',
-        'python -m pip install aiohttp playwright',
+        'python -m pip install curl_cffi playwright',
         'playwright install chromium',
     ]:
         print(f"    {C_GREEN}{cmd}{C_RESET}")
@@ -216,8 +225,8 @@ def _print_guide() -> None:
     for cmd in [
         'python xcpfuzz.py "XXX.680.938-XX"',
         'python xcpfuzz.py "XXX.680.938-XX" --nome "Silva"',
-        'python xcpfuzz.py "XXX.680.938-XX" --workers 30',
-        'python xcpfuzz.py "XXX.680.938-XX" --force-playwright',
+        'python xcpfuzz.py "XXX.680.938-XX" --rate 10',
+        'python xcpfuzz.py "XXX.680.938-XX" --no-api',
         'python xcpfuzz.py --help',
     ]:
         print(f"    {C_GREEN}{cmd}{C_RESET}")
@@ -230,7 +239,6 @@ def _print_guide() -> None:
 
     print(sep)
     print()
-
 
 class ResultWriter:
     def __init__(self, mask: str, name_filter: str) -> None:
@@ -257,7 +265,6 @@ class ResultWriter:
         self._f.write(f"Total encontrado: {self.count}/{total}\n")
         self._f.write(f"Fim     : {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
         self._f.close()
-
 
 class Progress:
     def __init__(self, total: int) -> None:
@@ -315,11 +322,12 @@ class Progress:
         else:
             self._log(f"  {C_DIM}· {cpf}{C_RESET}")
 
-    def error(self, cpf: str) -> None:
+    def error(self, cpf: str, reason: str = "") -> None:
         self.done += 1
         if not self.active:
             return
-        self._log(f"  {C_RED}× {cpf} — erro{C_RESET}")
+        extra = f" — {reason}" if reason else ""
+        self._log(f"  {C_RED}× {cpf}{extra}{C_RESET}")
 
     def finish(self) -> None:
         if self.active and self._bar_on_screen:
@@ -327,8 +335,7 @@ class Progress:
             sys.stdout.flush()
             self._bar_on_screen = False
 
-
-def _print_header(mode: str, mask: str, name: str, total: int, workers: int, output: str) -> None:
+def _print_header(mode: str, mask: str, name: str, total: int, workers: int, output: str, rps: float) -> None:
     sep = f"  {C_DIM}{'─' * 56}{C_RESET}"
     print()
     _print_banner()
@@ -339,14 +346,12 @@ def _print_header(mode: str, mask: str, name: str, total: int, workers: int, out
         print(f"  {C_DIM}Nome      :{C_RESET} {C_YELLOW}{C_BOLD}{name}{C_RESET}")
     print(f"  {C_DIM}Candidatos:{C_RESET} {total:,}")
     print(f"  {C_DIM}Workers   :{C_RESET} {workers}")
+    print(f"  {C_DIM}Rate base :{C_RESET} {rps:.1f} req/s")
     print(f"  {C_DIM}Saída     :{C_RESET} {output}")
     print(sep)
     print()
 
-
-async def _extract_token() -> str | None:
-    token: str | None = None
-
+async def _extract_waf_token() -> str | None:
     async with async_playwright() as p:
         try:
             browser = await p.chromium.launch(
@@ -361,6 +366,7 @@ async def _extract_token() -> str | None:
             )
 
         context = await browser.new_context(
+            user_agent=_BROWSER_UA,
             locale="pt-BR",
             timezone_id="America/Sao_Paulo",
             viewport={"width": 1366, "height": 768},
@@ -368,108 +374,39 @@ async def _extract_token() -> str | None:
         await context.add_init_script(_STEALTH_JS)
         page = await context.new_page()
 
-        def on_request(req):
-            nonlocal token
-            if token is not None:
-                return
-            if "busca.portaldatransparencia.gov.br" not in req.url:
-                return
-            qs = parse_qs(urlparse(req.url).query)
-            if "t" in qs:
-                token = qs["t"][0]
-
-        page.on("request", on_request)
-
         try:
             await page.goto(
                 f"{PORTAL_BASE}/pessoa-fisica/busca/lista",
                 wait_until="domcontentloaded",
                 timeout=60000,
             )
-            await page.wait_for_timeout(4000)
+            await page.wait_for_timeout(5000)
 
-            if token is None:
-                html = await page.content()
-                m = re.search(r"let\s+token\s*=\s*['\"]&?t=([A-Za-z0-9]+)['\"]", html)
-                if m:
-                    token = m.group(1)
-
-            if token is None:
-                try:
-                    await page.fill("#termo", "14345221722")
-                    btn = await page.query_selector(
-                        'button[aria-label="Enviar dados do formulário de busca"]'
-                    )
-                    if btn:
-                        await btn.click()
-                        await page.wait_for_timeout(8000)
-                except Exception:
-                    pass
+            cookies = await context.cookies()
+            token = next((c["value"] for c in cookies if c["name"] == "aws-waf-token"), None)
+            return token
         finally:
             await browser.close()
 
-    return token
-
-
-def _load_token() -> str | None:
+async def _probe_api(session: AsyncSession) -> bool:
     try:
-        token = TOKEN_FILE.read_text(encoding="utf-8").strip()
-        return token or None
-    except FileNotFoundError:
-        return None
-    except Exception:
-        return None
-
-
-def _save_token(token: str) -> None:
-    TOKEN_FILE.write_text(token, encoding="utf-8")
-
-
-def _invalidate_token() -> None:
-    try:
-        TOKEN_FILE.unlink(missing_ok=True)
-    except Exception:
-        pass
-
-
-async def _ensure_token() -> str:
-    cached = _load_token()
-    if cached:
-        print(f"  {C_DIM}Token     :{C_RESET} {C_GREEN}carregado de {TOKEN_FILE.name}{C_RESET}")
-        return cached
-
-    print(f"  {C_DIM}Token     :{C_RESET} {C_YELLOW}gerando novo token...{C_RESET}")
-    token = await _extract_token()
-
-    if not token:
-        print(f"  {C_RED}[ERRO]{C_RESET} Não foi possível obter o token.")
-        sys.exit(1)
-
-    _save_token(token)
-    print(f"  {C_DIM}Token     :{C_RESET} {C_GREEN}gerado e salvo em {TOKEN_FILE.name}{C_RESET}")
-    return token
-
-
-async def _probe_api(session: aiohttp.ClientSession, token: str) -> bool:
-    try:
-        async with session.get(
+        resp = await session.get(
             SEARCH_URL,
-            params={"termo": "14345221722", "pagina": 1, "tamanhoPagina": 1, "t": token},
-            timeout=aiohttp.ClientTimeout(total=10),
-        ) as resp:
-            if resp.status == 200:
-                ct = resp.headers.get("Content-Type", "")
-                if "json" in ct:
-                    data = await resp.json()
-                    return "registros" in data or "totalRegistros" in data
+            params={"termo": "14345221722", "pagina": 1, "tamanhoPagina": 1},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            ct = resp.headers.get("Content-Type", "")
+            if "json" in ct:
+                data = resp.json()
+                return "registros" in data or "totalRegistros" in data
     except Exception:
         pass
     return False
 
-
-async def _probe_with_spinner(session: aiohttp.ClientSession, token: str) -> bool:
+async def _probe_with_spinner(session: AsyncSession) -> bool:
     if not ANSI:
-        result = await _probe_api(session, token)
+        result = await _probe_api(session)
         print(f"  {C_DIM}API direta:{C_RESET} {'disponível' if result else 'indisponível'}")
         return result
 
@@ -488,7 +425,7 @@ async def _probe_with_spinner(session: aiohttp.ClientSession, token: str) -> boo
 
     spinner = asyncio.create_task(spin())
     try:
-        result = await _probe_api(session, token)
+        result = await _probe_api(session)
     finally:
         stop.set()
         await spinner
@@ -497,30 +434,27 @@ async def _probe_with_spinner(session: aiohttp.ClientSession, token: str) -> boo
     print(f"  {C_DIM}API direta:{C_RESET} {status}")
     return result
 
+async def _acquire_api_session(args) -> AsyncSession | None:
+    if args.no_api:
+        print(f"  {C_DIM}API direta:{C_RESET} {C_YELLOW}ignorada (--no-api){C_RESET}")
+        return None
 
-async def _acquire_api_session(args, attempts: int = API_ATTEMPTS) -> tuple[bool, str]:
-    if args.force_playwright:
-        print(f"  {C_DIM}Token     :{C_RESET} {C_YELLOW}ignorado (--force-playwright){C_RESET}")
-        print(f"  {C_DIM}API direta:{C_RESET} {C_YELLOW}ignorada (--force-playwright){C_RESET}")
-        return False, ""
+    print(f"  {C_DIM}WAF token :{C_RESET} {C_YELLOW}obtendo via Playwright...{C_RESET}")
+    token = await _extract_waf_token()
 
-    token = ""
-    for i in range(1, attempts + 1):
-        token = await _ensure_token()
-        conn = aiohttp.TCPConnector(ssl=False)
-        async with aiohttp.ClientSession(headers=_API_HEADERS, connector=conn) as session:
-            if await _probe_with_spinner(session, token):
-                return True, token
+    if not token:
+        print(f"  {C_RED}×{C_RESET} {C_DIM}Não foi possível obter aws-waf-token — usando Playwright{C_RESET}")
+        return None
 
-        if i < attempts:
-            delay = 2 * i
-            print(f"  {C_YELLOW}» Reciclando token e tentando novamente ({i}/{attempts - 1}) em {delay}s...{C_RESET}")
-            _invalidate_token()
-            await asyncio.sleep(delay)
+    session = AsyncSession(impersonate="chrome", headers=_API_HEADERS)
+    session.cookies.set("aws-waf-token", token, domain=".portaldatransparencia.gov.br")
 
-    print(f"  {C_RED}×{C_RESET} {C_DIM}API direta falhou após {attempts} tentativas — caindo para Playwright{C_RESET}")
-    return False, ""
+    if await _probe_with_spinner(session):
+        return session
 
+    await session.close()
+    print(f"  {C_RED}×{C_RESET} {C_DIM}API direta falhou mesmo com token — usando Playwright{C_RESET}")
+    return None
 
 async def _ticker(progress: Progress, stop: asyncio.Event) -> None:
     if not ANSI:
@@ -532,37 +466,52 @@ async def _ticker(progress: Progress, stop: asyncio.Event) -> None:
         except asyncio.TimeoutError:
             progress.draw()
 
-
 async def _query_api(
-    session: aiohttp.ClientSession,
+    session: AsyncSession,
     sem: asyncio.Semaphore,
-    limiter: RateLimiter,
+    limiter: AdaptiveRateLimiter,
     cpf: str,
     writer: ResultWriter,
     progress: Progress,
     name_filter: str,
-    token: str,
 ) -> None:
     async with sem:
         await limiter.wait()
         formatted = fmt(cpf)
         found, name = False, ""
         try:
-            async with session.get(
+            resp = await session.get(
                 SEARCH_URL,
                 params={
                     "termo": cpf,
                     "letraInicial": "",
                     "pagina": 1,
                     "tamanhoPagina": 10,
-                    "t": token,
                 },
-                timeout=aiohttp.ClientTimeout(total=15),
-            ) as resp:
-                if resp.status == 200:
-                    ct = resp.headers.get("Content-Type", "")
-                    if "json" in ct:
-                        found, name = _parse_json(await resp.json())
+                timeout=15,
+            )
+            if resp.status_code == 429:
+                limiter.penalize()
+                retry_after = resp.headers.get("Retry-After")
+                wait = float(retry_after) if retry_after and retry_after.isdigit() else limiter.min_interval * 4
+                await asyncio.sleep(wait)
+                progress.error(formatted, "429")
+                return
+            if resp.status_code == 403:
+                limiter.penalize()
+                progress.error(formatted, "403")
+                return
+            if resp.status_code == 200:
+                limiter.reward()
+                ct = resp.headers.get("Content-Type", "")
+                if "json" in ct:
+                    found, name = _parse_json(resp.json())
+            else:
+                limiter.penalize()
+        except RequestException:
+            limiter.penalize()
+            progress.error(formatted)
+            return
         except Exception:
             progress.error(formatted)
             return
@@ -577,32 +526,29 @@ async def _query_api(
         else:
             progress.miss(formatted)
 
-
 async def run_api(
     candidates: list[str],
     workers: int,
     name_filter: str,
     writer: ResultWriter,
     progress: Progress,
-    token: str,
+    session: AsyncSession,
+    limiter: AdaptiveRateLimiter,
 ) -> None:
-    conn = aiohttp.TCPConnector(limit=workers * 2, ssl=False)
     sem = asyncio.Semaphore(workers)
-    limiter = RateLimiter(API_MIN_INTERVAL)
     stop_ticker = asyncio.Event()
     ticker = asyncio.create_task(_ticker(progress, stop_ticker))
 
     try:
-        async with aiohttp.ClientSession(headers=_API_HEADERS, connector=conn) as session:
-            tasks = [
-                _query_api(session, sem, limiter, cpf, writer, progress, name_filter, token)
-                for cpf in candidates
-            ]
-            await asyncio.gather(*tasks, return_exceptions=True)
+        tasks = [
+            _query_api(session, sem, limiter, cpf, writer, progress, name_filter)
+            for cpf in candidates
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
     finally:
         stop_ticker.set()
         await ticker
-
+        await session.close()
 
 async def _query_playwright(
     browser: Browser,
@@ -615,7 +561,7 @@ async def _query_playwright(
         ready = asyncio.Event()
 
         context = await browser.new_context(
-            user_agent=_API_HEADERS["User-Agent"],
+            user_agent=_BROWSER_UA,
             viewport={"width": 1280, "height": 800},
             locale="pt-BR",
             timezone_id="America/Sao_Paulo",
@@ -685,7 +631,6 @@ async def _query_playwright(
 
         return (False, "")
 
-
 async def run_playwright(
     candidates: list[str],
     workers: int,
@@ -728,26 +673,27 @@ async def run_playwright(
             await ticker
             await browser.close()
 
-
 async def _run_async(args, candidates: list[str], writer: ResultWriter) -> None:
     total = len(candidates)
 
-    use_api, token = await _acquire_api_session(args)
+    session = await _acquire_api_session(args)
+    use_api = session is not None
 
     workers = args.workers if use_api else min(args.workers, 5)
-    mode = "API direta" if use_api else "Playwright (reCAPTCHA)"
+    mode = "API direta (curl_cffi)" if use_api else "Playwright (reCAPTCHA)"
 
-    _print_header(mode, args.mask, args.nome, total, workers, writer.path)
+    limiter = AdaptiveRateLimiter(base_rps=args.rate) if use_api else None
+
+    _print_header(mode, args.mask, args.nome, total, workers, writer.path, args.rate)
 
     progress = Progress(total)
     try:
         if use_api:
-            await run_api(candidates, workers, args.nome, writer, progress, token)
+            await run_api(candidates, workers, args.nome, writer, progress, session, limiter)
         else:
             await run_playwright(candidates, workers, args.debug, args.nome, writer, progress)
     finally:
         progress.finish()
-
 
 def main() -> None:
     if len(sys.argv) == 1:
@@ -763,14 +709,20 @@ def main() -> None:
                         help="Filtra pelo nome (substring, case-insensitive). Saída em target-<mask>.txt")
     parser.add_argument("--workers", type=int, default=20, metavar="N",
                         help="Concorrência (padrão: 20 API / 5 Playwright)")
+    parser.add_argument("--rate", type=float, default=DEFAULT_RPS, metavar="RPS",
+                        help=f"Requisições por segundo no modo API (padrão: {DEFAULT_RPS})")
     parser.add_argument("--debug", action="store_true",
                         help="Salva debug.html / debug.json da primeira consulta")
-    parser.add_argument("--force-playwright", action="store_true",
-                        help="Força Playwright mesmo se API direta funcionar")
+    parser.add_argument("--no-api", action="store_true",
+                        help="Pula a verificação da API e usa Playwright diretamente")
     args = parser.parse_args()
 
     if args.workers < 1:
         print(f"{C_RED}[ERRO]{C_RESET} --workers deve ser >= 1")
+        sys.exit(1)
+
+    if args.rate <= 0:
+        print(f"{C_RED}[ERRO]{C_RESET} --rate deve ser > 0")
         sys.exit(1)
 
     candidates = generate_candidates(args.mask)
@@ -795,7 +747,6 @@ def main() -> None:
 
     if interrupted:
         sys.exit(130)
-
 
 if __name__ == "__main__":
     main()
