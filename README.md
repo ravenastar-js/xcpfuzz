@@ -10,7 +10,7 @@
 </h3>
 
 [![Python](https://img.shields.io/badge/Python_3.12+-000000?style=for-the-badge&logo=python&logoColor=6effa8&labelColor=0c1a13)](#)
-[![aiohttp](https://img.shields.io/badge/aiohttp-000000?style=for-the-badge&logo=python&logoColor=6effa8&labelColor=0c1a13)](#)
+[![curl_cffi](https://img.shields.io/badge/curl__cffi-000000?style=for-the-badge&logo=python&logoColor=6effa8&labelColor=0c1a13)](https://github.com/lexiforest/curl_cffi)
 [![Playwright](https://img.shields.io/badge/Playwright-000000?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzZlZmZhOCIgZD0iTTEyIDJDMi4yIDIgMiAyLjIgMiAxMnMyLjIgMTAgMTAgMTAgMTAtMi4yIDEwLTEwUzIxLjggMiAxMiAyem0wIDE4Yy00LjQgMC04LTMuNi04LThzMy42LTggOC04IDggMy42IDggOC0zLjYgOC04IDh6Ii8+PC9zdmc+&logoColor=6effa8&labelColor=0c1a13)](https://playwright.dev/python/)
 [![Windows PowerShell](https://img.shields.io/badge/Windows_PowerShell-000000?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzZlZmZhOCIgZD0iTTMsNS41VjExSDEwLjVWM0gzVjUuNU0zLDE4LjVWMTNIMTAuNVYyMUgzVjE4LjVNMTEuNSwyMUgyMVYxM0gxMS41VjIxTTExLjUsM1YxMUgyMVYzSDExLjVaIi8+PC9zdmc+&logoColor=6effa8&labelColor=0c1a13)](https://learn.microsoft.com/pt-br/powershell/scripting/install/install-powershell)
 [![License](https://img.shields.io/badge/License-MIT-000000?style=for-the-badge&logo=opensourceinitiative&logoColor=6effa8&labelColor=0c1a13)](#)
@@ -62,7 +62,9 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
   Por que usar?
 </h3>
 
-- <img src="https://api.iconify.design/mdi/rocket-launch.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Rápido** - Concorrência assíncrona com `aiohttp` (padrão: 20 workers paralelos)
+- <img src="https://api.iconify.design/mdi/rocket-launch.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Rápido** - Concorrência assíncrona com `curl_cffi` (padrão: 20 workers paralelos)
+- <img src="https://api.iconify.design/mdi/incognito.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Bypass do AWS WAF** - Extrai o cookie `aws-waf-token` via Playwright e reutiliza em sessão `curl_cffi` com fingerprint TLS de Chrome real
+- <img src="https://api.iconify.design/mdi/speedometer.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Rate limit adaptativo** - Respeita os limites oficiais da API (400 req/min diurno, 700 req/min 00:00–06:00) com jitter, backoff em 429/403 e recuperação automática
 - <img src="https://api.iconify.design/mdi/refresh.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Fallback inteligente** - Se a API for bloqueada, cai automaticamente para Playwright
 - <img src="https://api.iconify.design/mdi/palette.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Interface colorida** - Progress bar ao vivo com ETA, taxa de consultas e logs em cores
 - <img src="https://api.iconify.design/mdi/filter.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Filtro por nome** - Retorna só CPFs cujo titular contenha o nome buscado
@@ -78,9 +80,10 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
 
 - <img src="https://api.iconify.design/mdi/format-list-numbered.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Máscara com wildcard** - Use `X` em qualquer posição (`XXX.680.938-XX` gera 100¹·⁵ CPFs válidos)
 - <img src="https://api.iconify.design/mdi/check-decagram.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Dígitos verificadores automáticos** - Os dois últimos dígitos são calculados pelo algoritmo oficial do CPF
-- <img src="https://api.iconify.design/mdi/shield-lock.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Token automático** - Extrai o token `?t=` do Portal via Playwright e cacheia em `token.txt`
-- <img src="https://api.iconify.design/mdi/incognito.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Stealth JS** - Sobrescreve `navigator.webdriver`, plugins, languages e platform para evitar detecção
-- <img src="https://api.iconify.design/mdi/swap-horizontal.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Modo duplo** - API direta (rápida) ou Playwright headless (contorna reCAPTCHA)
+- <img src="https://api.iconify.design/mdi/shield-lock.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Bypass do AWS WAF** - Playwright resolve o desafio do WAF e extrai o cookie `aws-waf-token`; a API direta roda em `curl_cffi` com `impersonate="chrome"` (fingerprint TLS/JA3 real) e headers consistentes (`Sec-CH-UA`, `Sec-Fetch-*`)
+- <img src="https://api.iconify.design/mdi/incognito.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Stealth JS** - Sobrescreve `navigator.webdriver`, plugins, languages e platform para evitar detecção no Playwright
+- <img src="https://api.iconify.design/mdi/speedometer.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Rate limit adaptativo** - Classe `AdaptiveRateLimiter` com taxa configurável (`--rate`), jitter de até 25%, penalização multiplicativa em 429/403 (respeita `Retry-After`) e recuperação de 3% por sucesso
+- <img src="https://api.iconify.design/mdi/swap-horizontal.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Modo duplo** - API direta (rápida, com WAF token) ou Playwright headless (contorna reCAPTCHA)
 - <img src="https://api.iconify.design/mdi/file-document-multiple.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Saída persistente** - Arquivo `.txt` com cabeçalho, data, máscara, total e nomes encontrados
 - <img src="https://api.iconify.design/mdi/bug.svg?color=%236effa8" width="20" height="20" style="vertical-align: middle;" /> **Debug** - Flag `--debug` salva `debug.html` e `debug.json` da primeira consulta
 
@@ -95,7 +98,7 @@ Cada consulta retorna se o CPF existe na base e, quando disponível, o **nome as
 <div align="center">
 
 [![Python](https://img.shields.io/badge/Python_3.12-000000?style=flat-square&logo=python&logoColor=6effa8&labelColor=0c1a13)](https://python.org/)
-[![aiohttp](https://img.shields.io/badge/aiohttp-000000?style=flat-square&logo=python&logoColor=6effa8&labelColor=0c1a13)](https://docs.aiohttp.org/)
+[![curl_cffi](https://img.shields.io/badge/curl__cffi-000000?style=flat-square&logo=python&logoColor=6effa8&labelColor=0c1a13)](https://github.com/lexiforest/curl_cffi)
 [![Playwright](https://img.shields.io/badge/Playwright-000000?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzZlZmZhOCIgZD0iTTEyIDJDMi4yIDIgMiAyLjIgMiAxMnMyLjIgMTAgMTAgMTAgMTAtMi4yIDEwLTEwUzIxLjggMiAxMiAyem0wIDE4Yy00LjQgMC04LTMuNi04LThzMy42LTggOC04IDggMy42IDggOC0zLjYgOC04IDh6Ii8+PC9zdmc+&logoColor=6effa8&labelColor=0c1a13)](https://playwright.dev/python/)
 [![asyncio](https://img.shields.io/badge/asyncio-000000?style=flat-square&logo=python&logoColor=6effa8&labelColor=0c1a13)](https://docs.python.org/3/library/asyncio.html)
 [![Windows PowerShell](https://img.shields.io/badge/Windows_PowerShell-000000?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzZlZmZhOCIgZD0iTTMsNS41VjExSDEwLjVWM0gzVjUuNU0zLDE4LjVWMTNIMTAuNVYyMUgzVjE4LjVNMTEuNSwyMUgyMVYxM0gxMS41VjIxTTExLjUsM1YxMUgyMVYzSDExLjVaIi8+PC9zdmc+&logoColor=6effa8&labelColor=0c1a13)](https://learn.microsoft.com/pt-br/powershell/scripting/install/install-powershell)
@@ -145,11 +148,11 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
 python -m pip install --upgrade pip
-python -m pip install aiohttp playwright
+python -m pip install curl_cffi playwright
 playwright install chromium
 ```
 
-> O `playwright install chromium` baixa o navegador headless usado para extrair o token e, se necessário, operar em modo fallback contra o reCAPTCHA.
+> O `playwright install chromium` baixa o navegador headless usado para extrair o cookie `aws-waf-token` e, se necessário, operar em modo fallback contra o reCAPTCHA.
 >
 > <img src="https://api.iconify.design/mdi/microsoft-windows.svg?color=%236effa8" width="18" height="18" style="vertical-align: middle;" /> **Somente PowerShell:** o comando `Set-ExecutionPolicy -Scope Process` é necessário para permitir a ativação do venv. Em `cmd.exe`, use `.\.venv\Scripts\activate.bat`; em Linux/macOS, `source .venv/bin/activate`.
 >
@@ -176,11 +179,14 @@ Sem argumentos, o script mostra o **guia completo com banner, link do repositór
 | `python xcpfuzz.py "XXX.680.938-XX"` | Gera todos os CPFs válidos e consulta cada um |
 | `python xcpfuzz.py "XXX.680.938-XX" --nome "Silva"` | Filtra por nome (case-insensitive) |
 | `python xcpfuzz.py "XXX.680.938-XX" --workers 30` | Aumenta a concorrência (padrão: 20) |
-| `python xcpfuzz.py "XXX.680.938-XX" --force-playwright` | Força modo Playwright (contorna bloqueio de API) |
+| `python xcpfuzz.py "XXX.680.938-XX" --rate 10` | Ajusta a taxa de requisições por segundo (padrão: 6.6) |
+| `python xcpfuzz.py "XXX.680.938-XX" --no-api` | Força modo Playwright (ignora API direta) |
 | `python xcpfuzz.py "XXX.680.938-XX" --debug` | Salva `debug.html`/`debug.json` da primeira consulta |
 | `python xcpfuzz.py --help` | Help resumido das flags |
 
 > **Formato da máscara:** exatamente **11 posições**, com `X` nas posições que devem ser variadas. Pontos e hífen são opcionais (`XXX.680.938-XX` ou `XXX680938XX`).
+>
+> **Sobre `--rate`:** alinhado aos limites oficiais da API do Portal da Transparência (400 req/min diurno = 6.6 req/s, 700 req/min entre 00:00 e 06:00 = 11.6 req/s, APIs restritas a 180 req/min = 3 req/s). O rate limiter adaptativo reduz automaticamente a taxa em caso de `429`/`403` e a recupera após sucessos.
 
 <h3>
   <img src="https://api.iconify.design/mdi/pipe.svg?color=%236effa8" width="22" height="22" style="vertical-align: middle;" />
@@ -241,14 +247,18 @@ Fim     : 11/11/2026 14:33:12
 
 | Sintoma | Causa provável | Correção |
 | :--- | :--- | :--- |
-| `Não foi possível obter o token` | Portal mudou HTML ou bloqueou IP | Use `--force-playwright`, apague `token.txt` e tente novamente |
-| `API direta: indisponível` | Token expirou ou rate limit | Apague `token.txt` para gerar novo token |
-| Progresso para em 0% | Requisições bloqueadas | Tente `--workers 3` e aguarde alguns minutos |
+| `API direta: indisponível` | WAF bloqueou a requisição de probe | Tente novamente em alguns minutos; ou use `--no-api` para forçar Playwright |
+| Erros `429` recorrentes | Rate limit atingido | Reduza `--rate` (ex: `--rate 3`) e aguarde |
+| Erros `403` recorrentes | WAF bloqueou após excesso de requisições | Aguarde 5–10 min, reduza `--rate` e `--workers` |
+| Progresso para em 0% | Requisições bloqueadas | Tente `--workers 3 --rate 2` e aguarde alguns minutos |
+| `Não foi possível obter aws-waf-token` | Playwright não resolveu o desafio do WAF | Rode `playwright install chromium` novamente; tente `--no-api` |
 | `Máscara inválida` | Faltou dígito ou caractere estranho | Use formato `XXX.680.938-XX` (11 posições) |
+| `Rate limit adaptativo reduzindo taxa muito rápido` | Muitos bloqueios em sequência | Reduza `--workers` (ex: `--workers 5`) para diminuir concorrência |
 | Mojibake (`Ã¡`, `â€"`) no terminal | Console em CP1252 ou pipe sem UTF-8 | Rode `chcp 65001` antes, use Windows Terminal ou aplique `$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new()` antes do comando |
 | `... não pode ser carregado porque a execução de scripts foi desabilitada` | ExecutionPolicy restritiva no PowerShell | Rode `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force` |
 | `.\.venv\Scripts\Activate.ps1 : não reconhecido` | Venv não criado ou PowerShell em modo restrito | Verifique se `python -m venv .venv` rodou e reabra o terminal |
 | `python: command not found` | Python não instalado ou fora do PATH | Reinstale via `winget install -e --id Python.Python.3.12` e reabra o terminal |
+| `ModuleNotFoundError: No module named 'curl_cffi'` | Dependência não instalada | Rode `python -m pip install curl_cffi` |
 
 ---
 
